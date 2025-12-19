@@ -2,22 +2,11 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { AppState, QuadrantState, GridCell, CellSize } from './types';
 import Cell from './components/Cell';
-import { Plus, Minus, Camera, Share2, Lock, Unlock, X, Copy, Check, Settings, Edit3, Trash2, LayoutGrid, AlertTriangle, Download, Upload, Save } from 'lucide-react';
+import { Plus, Minus, Camera, Lock, Unlock, Settings, Edit3, Trash2, LayoutGrid, AlertTriangle } from 'lucide-react';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(() => {
-    // Prioridade 1: Hash da URL (para links compartilhados)
-    const hash = window.location.hash.substring(1);
-    if (hash) {
-      try {
-        const decoded = JSON.parse(atob(decodeURIComponent(hash)));
-        if (decoded && decoded.quadrants) return decoded;
-      } catch (e) {
-        console.error("Erro ao carregar dados da URL");
-      }
-    }
-    
-    // Prioridade 2: LocalStorage (para persistência local 24/7)
+    // LocalStorage (para persistência local 24/7)
     const saved = localStorage.getItem('multi-pixel-grid-data-v2');
     if (saved) {
       try {
@@ -36,16 +25,11 @@ const App: React.FC = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [selectedCellId, setSelectedCellId] = useState<string | null>(null);
-  const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
   
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [unlockInput, setUnlockInput] = useState('');
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
-  const [tempPassword, setTempPassword] = useState(state.password || '');
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Efeito de persistência: Salvamento automático instantâneo
   useEffect(() => {
@@ -103,47 +87,6 @@ const App: React.FC = () => {
     }));
   }, [isEditing]);
 
-  const exportData = () => {
-    const dataStr = JSON.stringify(state, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = `grid-backup-${new Date().toISOString().split('T')[0]}.json`;
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-  };
-
-  const importData = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-        if (json.quadrants) {
-          if (window.confirm("Isso irá substituir seu dashboard atual. Continuar?")) {
-            setState(json);
-          }
-        }
-      } catch (error) {
-        alert("Erro ao importar arquivo JSON inválido.");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  const generateLink = () => {
-    const data = btoa(JSON.stringify(state));
-    return `${window.location.origin}${window.location.pathname}#${data}`;
-  };
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(generateLink());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const attemptEdit = () => {
     if (!state.password) setIsEditing(true);
     else setShowPasswordPrompt(true);
@@ -183,9 +126,6 @@ const App: React.FC = () => {
             <button onClick={() => setIsEditing(false)} className="p-1.5 text-green-500 hover:bg-green-500/10 rounded-lg transition-colors" title="Travar Edição">
               <Unlock size={20} />
             </button>
-            <button onClick={() => setShareModalOpen(true)} className="p-1.5 text-purple-500 hover:bg-purple-500/10 rounded-lg transition-colors">
-              <Settings size={20} />
-            </button>
             <button onClick={() => window.print()} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors">
               <Camera size={20} />
             </button>
@@ -206,7 +146,7 @@ const App: React.FC = () => {
             
             {/* Header do Quadrante */}
             <div className="w-full flex flex-col items-center mb-6 gap-3">
-              <div className="relative w-full max-w-sm">
+              <div className="relative w-full max-sm px-4">
                 <input 
                   type="text" 
                   readOnly={!isEditing} 
@@ -305,66 +245,6 @@ const App: React.FC = () => {
         </button>
       )}
 
-      {/* Modais de Durabilidade */}
-      {shareModalOpen && (
-        <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 backdrop-blur-md" onClick={() => setShareModalOpen(false)}>
-          <div className="bg-[#121214] border border-[#222] p-8 rounded-2xl max-w-lg w-full space-y-8 shadow-[0_0_100px_rgba(0,0,0,1)]" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center border-b border-white/5 pb-4">
-              <div className="flex flex-col gap-1">
-                <h3 className="text-purple-400 font-bold uppercase tracking-widest text-xs flex items-center gap-2"><Save size={16}/> Configurações de Dados</h3>
-                <p className="text-[9px] text-gray-500 uppercase tracking-tighter">Sua infraestrutura de persistência</p>
-              </div>
-              <button onClick={() => setShareModalOpen(false)} className="text-gray-500 hover:text-white transition-colors"><X size={24}/></button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Senha */}
-              <div className="space-y-2">
-                <label className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Bloqueio do Dashboard</label>
-                <div className="relative">
-                  <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
-                  <input type="text" placeholder="Sem senha (Acesso Livre)" value={tempPassword} onChange={e => setTempPassword(e.target.value)}
-                    className="w-full bg-black/50 border border-white/5 rounded-xl pl-9 pr-3 py-3 text-sm outline-none focus:border-purple-500/50 transition-all font-mono" />
-                </div>
-              </div>
-
-              {/* Link de Resiliência */}
-              <div className="space-y-2">
-                <label className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Link de Contingência (Codificado)</label>
-                <div className="flex gap-2">
-                  <div className="flex-1 bg-black/50 border border-white/5 rounded-xl px-4 py-3 text-[10px] text-gray-500 font-mono overflow-hidden whitespace-nowrap text-ellipsis italic">
-                    {generateLink().substring(0, 50)}...
-                  </div>
-                  <button onClick={copyLink} className="bg-purple-600 hover:bg-purple-500 px-4 rounded-xl transition-all shadow-lg active:scale-95 shrink-0">
-                    {copied ? <Check size={18}/> : <Copy size={18}/>}
-                  </button>
-                </div>
-                <p className="text-[8px] text-gray-600 uppercase">Este link carrega seu dashboard em qualquer lugar do mundo.</p>
-              </div>
-
-              {/* Backup e Importação 24/7 */}
-              <div className="pt-4 border-t border-white/5 flex flex-col gap-4">
-                <label className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Armazenamento Offline</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button onClick={exportData} className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 py-3 rounded-xl transition-all text-[10px] font-bold uppercase tracking-widest">
-                    <Download size={14} /> Exportar JSON
-                  </button>
-                  <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 py-3 rounded-xl transition-all text-[10px] font-bold uppercase tracking-widest">
-                    <Upload size={14} /> Importar JSON
-                  </button>
-                  <input type="file" ref={fileInputRef} onChange={importData} className="hidden" accept=".json" />
-                </div>
-              </div>
-
-              <button onClick={() => { setState(prev => ({ ...prev, password: tempPassword || undefined })); setShareModalOpen(false); }} 
-                className="w-full bg-green-600/90 hover:bg-green-600 py-4 rounded-xl font-bold uppercase text-[10px] tracking-[0.2em] transition-all shadow-xl active:scale-[0.98]">
-                Consolidar Mudanças
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Prompt de Senha */}
       {showPasswordPrompt && (
         <div className="fixed inset-0 bg-black/98 z-[110] flex items-center justify-center p-4 backdrop-blur-xl" onClick={() => setShowPasswordPrompt(false)}>
@@ -384,7 +264,7 @@ const App: React.FC = () => {
 
       <footer className="mt-48 mb-12 flex flex-col items-center gap-4 text-gray-800 select-none print:hidden opacity-40">
         <div className="h-[1px] w-24 bg-gray-900" />
-        <p className="text-[7px] font-bold uppercase tracking-[0.8em]">Pixel Multi-Grid v2.4 • Persistence Active</p>
+        <p className="text-[7px] font-bold uppercase tracking-[0.8em]">Pixel Multi-Grid v2.5 • Persistence Active</p>
       </footer>
 
       <style>{`

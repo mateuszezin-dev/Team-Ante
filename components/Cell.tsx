@@ -60,7 +60,8 @@ const Cell: React.FC<CellProps> = ({ cell, onUpdate, isSelected, onSelect, readO
 
   const handleCellClick = (e: React.MouseEvent) => {
     if (onSelect) onSelect();
-    if (cell.linkUrl && activeEditor === 'none' && !showStickerMenu) {
+    // Links só funcionam em células grandes
+    if (cell.size === 'large' && cell.linkUrl && activeEditor === 'none' && !showStickerMenu) {
        if (readOnly || e.metaKey || e.ctrlKey) {
           window.open(cell.linkUrl, '_blank');
        }
@@ -87,6 +88,8 @@ const Cell: React.FC<CellProps> = ({ cell, onUpdate, isSelected, onSelect, readO
     );
   };
 
+  const isSmall = cell.size === 'small';
+
   return (
     <div 
       onClick={handleCellClick}
@@ -112,13 +115,13 @@ const Cell: React.FC<CellProps> = ({ cell, onUpdate, isSelected, onSelect, readO
       ) : (
         !readOnly && (
           <button onClick={(e) => { e.stopPropagation(); mainInputRef.current?.click(); }} className="opacity-10 group-hover:opacity-100 text-white transition-opacity">
-            <Plus size={cell.size === 'large' ? 24 : 16} />
+            <Plus size={isSmall ? 12 : 24} />
           </button>
         )
       )}
 
-      {/* Red X Overlay */}
-      {cell.isCrossedOut && (
+      {/* Red X Overlay - Apenas para células grandes */}
+      {cell.isCrossedOut && !isSmall && (
         <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
           <svg viewBox="0 0 24 24" className="w-[90%] h-[90%] text-red-600 drop-shadow-[0_0_3px_rgba(0,0,0,0.8)]">
             <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
@@ -127,10 +130,15 @@ const Cell: React.FC<CellProps> = ({ cell, onUpdate, isSelected, onSelect, readO
         </div>
       )}
 
-      {renderSticker(cell.stickerTl, 'tl')}
-      {renderSticker(cell.stickerTr, 'tr')}
-      {renderSticker(cell.stickerBl, 'bl')}
-      {renderSticker(cell.stickerBr, 'br')}
+      {/* Stickers apenas para células grandes */}
+      {cell.size === 'large' && (
+        <>
+          {renderSticker(cell.stickerTl, 'tl')}
+          {renderSticker(cell.stickerTr, 'tr')}
+          {renderSticker(cell.stickerBl, 'bl')}
+          {renderSticker(cell.stickerBr, 'br')}
+        </>
+      )}
 
       {!readOnly && (
         <div className={`absolute inset-0 bg-black/90 ${activeEditor !== 'none' || showStickerMenu ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} flex flex-col items-center justify-center gap-1 transition-opacity z-40 p-1 ${activeEditor !== 'none' || showStickerMenu ? 'pointer-events-auto' : 'pointer-events-none group-hover:pointer-events-auto'}`}>
@@ -139,11 +147,11 @@ const Cell: React.FC<CellProps> = ({ cell, onUpdate, isSelected, onSelect, readO
               <input autoFocus type="text" placeholder="URL..." value={tempValue} onChange={(e) => setTempValue(e.target.value)}
                 className="w-full bg-gray-800 text-[8px] p-1 rounded border border-blue-500 outline-none text-white" onKeyDown={(e) => e.key === 'Enter' && handleSaveEditor()} />
               <div className="flex justify-center gap-1">
-                <button onClick={handleSaveEditor} className="text-green-500"><Check size={12}/></button>
-                <button onClick={() => setActiveEditor('none')} className="text-red-500"><CloseIcon size={12}/></button>
+                <button onClick={handleSaveEditor} className="text-green-500"><Check size={isSmall ? 10 : 12}/></button>
+                <button onClick={() => setActiveEditor('none')} className="text-red-500"><CloseIcon size={isSmall ? 10 : 12}/></button>
               </div>
             </div>
-          ) : showStickerMenu ? (
+          ) : showStickerMenu && !isSmall ? (
             <div className="flex flex-col items-center gap-0.5">
               <div className="grid grid-cols-2 gap-0.5">
                 {[
@@ -162,21 +170,26 @@ const Cell: React.FC<CellProps> = ({ cell, onUpdate, isSelected, onSelect, readO
           ) : (
             <div className="flex flex-col gap-1 items-center">
               <div className="flex flex-wrap justify-center gap-1">
-                <button onClick={(e) => { e.stopPropagation(); mainInputRef.current?.click(); }} title="Upload Imagem" className="bg-blue-600 p-1 rounded hover:bg-blue-500"><ImageIcon size={12} /></button>
-                <button onClick={(e) => { e.stopPropagation(); openEditor('imageUrl'); }} title="URL da Imagem" className="bg-cyan-600 p-1 rounded hover:bg-cyan-500"><Globe size={12} /></button>
-                <button onClick={(e) => { e.stopPropagation(); openEditor('link'); }} title="Link de Redirecionamento" className={`${cell.linkUrl ? 'bg-green-600' : 'bg-gray-600'} p-1 rounded hover:brightness-110`}><LinkIcon size={12} /></button>
-                <button onClick={(e) => { e.stopPropagation(); setShowStickerMenu(true); }} title="Stickers" className="bg-purple-600 p-1 rounded hover:bg-purple-500"><Sparkles size={12} /></button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onUpdate({ isCrossedOut: !cell.isCrossedOut }); }} 
-                  title="Alternar X Vermelho" 
-                  className={`${cell.isCrossedOut ? 'bg-red-600' : 'bg-gray-700'} p-1 rounded transition-colors hover:brightness-125 border border-white/10`}
-                >
-                  <X size={12} className={cell.isCrossedOut ? 'text-white' : 'text-red-500'} />
-                </button>
+                <button onClick={(e) => { e.stopPropagation(); mainInputRef.current?.click(); }} title="Upload Imagem" className="bg-blue-600 p-1 rounded hover:bg-blue-500"><ImageIcon size={isSmall ? 9 : 12} /></button>
+                <button onClick={(e) => { e.stopPropagation(); openEditor('imageUrl'); }} title="URL da Imagem" className="bg-cyan-600 p-1 rounded hover:bg-cyan-500"><Globe size={isSmall ? 9 : 12} /></button>
+                
+                {!isSmall && (
+                  <>
+                    <button onClick={(e) => { e.stopPropagation(); openEditor('link'); }} title="Link de Redirecionamento" className={`${cell.linkUrl ? 'bg-green-600' : 'bg-gray-600'} p-1 rounded hover:brightness-110`}><LinkIcon size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); setShowStickerMenu(true); }} title="Stickers" className="bg-purple-600 p-1 rounded hover:bg-purple-500"><Sparkles size={12} /></button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onUpdate({ isCrossedOut: !cell.isCrossedOut }); }} 
+                      title="Alternar X Vermelho" 
+                      className={`${cell.isCrossedOut ? 'bg-red-600' : 'bg-gray-700'} p-1 rounded transition-colors hover:brightness-125 border border-white/10`}
+                    >
+                      <X size={12} className={cell.isCrossedOut ? 'text-white' : 'text-red-500'} />
+                    </button>
+                  </>
+                )}
               </div>
               {cell.imageUrl && (
-                <button onClick={(e) => { e.stopPropagation(); onUpdate({ imageUrl: undefined, isCrossedOut: false }); }} className="text-red-500 hover:text-red-400 mt-0.5">
-                  <Trash2 size={10} />
+                <button onClick={(e) => { e.stopPropagation(); onUpdate({ imageUrl: undefined, isCrossedOut: false, stickerTl: undefined, stickerTr: undefined, stickerBl: undefined, stickerBr: undefined, linkUrl: undefined }); }} className="text-red-500 hover:text-red-400 mt-0.5">
+                  <Trash2 size={isSmall ? 8 : 10} />
                 </button>
               )}
             </div>
