@@ -1,12 +1,12 @@
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { AppState, QuadrantState, GridCell, CellSize } from './types';
 import Cell from './components/Cell';
-import { Plus, Minus, Camera, Lock, Unlock, Settings, Edit3, Trash2, LayoutGrid, AlertTriangle } from 'lucide-react';
+import { Plus, Minus, Camera, Lock, Unlock, Edit3, Trash2, LayoutGrid, AlertTriangle, Save, Check } from 'lucide-react';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(() => {
-    // LocalStorage (para persistência local 24/7)
+    // Carrega do LocalStorage para manter o que foi feito anteriormente
     const saved = localStorage.getItem('multi-pixel-grid-data-v2');
     if (saved) {
       try {
@@ -17,7 +17,7 @@ const App: React.FC = () => {
       }
     }
     
-    // Default state caso não haja nada salvo
+    // Estado inicial padrão
     return {
       quadrants: [{ id: 'q-initial', title: 'MEU DASHBOARD', rows: 1, columns: 10, cells: {} }]
     };
@@ -26,18 +26,32 @@ const App: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedCellId, setSelectedCellId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [unlockInput, setUnlockInput] = useState('');
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
 
-  // Efeito de persistência: Salvamento automático instantâneo
+  // Monitora mudanças para ativar o alerta de "não salvo"
   useEffect(() => {
-    setSaveStatus('saving');
-    localStorage.setItem('multi-pixel-grid-data-v2', JSON.stringify(state));
-    const timer = setTimeout(() => setSaveStatus('saved'), 500);
-    return () => clearTimeout(timer);
+    if (isEditing) {
+      setHasUnsavedChanges(true);
+    }
   }, [state]);
+
+  const handleManualSave = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSaveStatus('saving');
+    
+    // Persiste no LocalStorage (isso "reescreve" a memória do site com os novos dados)
+    localStorage.setItem('multi-pixel-grid-data-v2', JSON.stringify(state));
+    
+    setTimeout(() => {
+      setSaveStatus('saved');
+      setHasUnsavedChanges(false);
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }, 600);
+  };
 
   const addQuadrant = () => {
     const newId = `q-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
@@ -105,9 +119,9 @@ const App: React.FC = () => {
       
       {/* Barra de Status 24/7 Superior */}
       <div className="fixed top-4 left-4 z-50 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/5 pointer-events-none select-none">
-        <div className={`w-1.5 h-1.5 rounded-full ${saveStatus === 'saving' ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`} />
+        <div className={`w-1.5 h-1.5 rounded-full ${hasUnsavedChanges ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`} />
         <span className="text-[8px] font-bold uppercase tracking-widest text-white/40">
-          {saveStatus === 'saving' ? 'Sincronizando...' : 'Sistema Online - Salvo Localmente'}
+          {hasUnsavedChanges ? 'Alterações Pendentes' : 'Sistema Consolidado'}
         </span>
       </div>
 
@@ -119,9 +133,23 @@ const App: React.FC = () => {
           </button>
         ) : (
           <div className="flex gap-3 bg-[#161618] p-2.5 border border-[#333] rounded-xl shadow-2xl items-center" onClick={e => e.stopPropagation()}>
-            <button onClick={addQuadrant} className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg font-bold text-[9px] uppercase tracking-tighter transition-all">
+            <button onClick={addQuadrant} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-lg font-bold text-[9px] uppercase tracking-tighter transition-all border border-white/5">
               <LayoutGrid size={14} /> + Quadrante
             </button>
+            <div className="w-[1px] h-6 bg-white/10" />
+            
+            {/* NOVO BOTÃO DE SALVAR */}
+            <button 
+              onClick={handleManualSave}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg font-bold text-[9px] uppercase tracking-widest transition-all shadow-lg ${
+                saveStatus === 'saved' ? 'bg-green-600 text-white' : 
+                hasUnsavedChanges ? 'bg-blue-600 text-white animate-pulse' : 'bg-gray-700 text-gray-400 opacity-50'
+              }`}
+            >
+              {saveStatus === 'saved' ? <Check size={14} /> : <Save size={14} />}
+              {saveStatus === 'saved' ? 'Salvo!' : 'Salvar Alterações'}
+            </button>
+
             <div className="w-[1px] h-6 bg-white/10" />
             <button onClick={() => setIsEditing(false)} className="p-1.5 text-green-500 hover:bg-green-500/10 rounded-lg transition-colors" title="Travar Edição">
               <Unlock size={20} />
@@ -264,7 +292,7 @@ const App: React.FC = () => {
 
       <footer className="mt-48 mb-12 flex flex-col items-center gap-4 text-gray-800 select-none print:hidden opacity-40">
         <div className="h-[1px] w-24 bg-gray-900" />
-        <p className="text-[7px] font-bold uppercase tracking-[0.8em]">Pixel Multi-Grid v2.5 • Persistence Active</p>
+        <p className="text-[7px] font-bold uppercase tracking-[0.8em]">Pixel Multi-Grid v2.6 • Local Storage Persistence</p>
       </footer>
 
       <style>{`
