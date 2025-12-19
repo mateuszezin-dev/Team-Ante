@@ -1,0 +1,5 @@
+{
+  "name": "Team Grid Builder",
+  "description": "A customizable grid-based layout tool inspired by Pokémon team building spreadsheets, allowing users to upload GIFs, images, and add status icons in a dark, pixel-style aesthetic.",
+  "requestFramePermissions": []
+}
